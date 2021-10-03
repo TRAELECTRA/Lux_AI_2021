@@ -54,3 +54,15 @@ Default: Cooldown < 1
 * CityTile의 Road Level은 6이다.
 * Worker는 pillage Action으로 0.5 per time 만큼 Road Level을 줄일 수 있다. ( 0이 되면, CityTile은 어둠에 빠진다 )
 * 턴이 끝날때 Cart가 위치한 Road Level이 0.75만큼 증가한다.
+
+### Day/Night Cycle
+
+* 한 cycle은 40 turns (day: 30, night: 10) 으로 이루어진다. 
+* 전체 게임은 총 9번의 cycle로 진행된다.
+* 밤은 자원을 소모해서 생존을 위한 빛을 생산해야 한다. 
+  * Citytile: 23 - 5 * (인접 타일 수) 
+  * Units: 타일 위에 있지 않을때 cart 10, worker 4 
+    * 가장 비효율적인 자원부터 소모 (wood > coal > uranium)하고, 해당 자원은 전부다 소모한다. 
+  * Units는 base cooldown 2배 
+  * 밤동안 자원이 부족한 unit은 게임에서 사라진다. 
+  * 전체 도시의 자원이 부족한 경우 전체 citytile이 사라진다. 
