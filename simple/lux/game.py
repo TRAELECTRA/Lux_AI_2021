@@ -4,7 +4,6 @@ from .game_objects import Player, Unit, City, CityTile
 
 INPUT_CONSTANTS = Constants.INPUT_CONSTANTS
 
-
 class Game:
     def _initialize(self, messages):
         """
