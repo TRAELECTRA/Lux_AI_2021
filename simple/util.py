@@ -1,12 +1,116 @@
-# from collections import namedtuple, deque
-# import random
-# import numpy as np
-# import math
-# import torch
-# import torch.nn as nn
-# import torch.optim as optim
-# import torch.nn.functional as F
-# import torchvision.transforms as T
+from collections import namedtuple, deque
+import random
+import numpy as np
+import math
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import torchvision.transforms as T
+
+from lux.constants import Constants
+
+INPUT_CONSTANTS = Constants.INPUT_CONSTANTS
+RESOURCE_TYPES = Constants.RESOURCE_TYPES
+
+def updateMap(nStep: int, \
+              nXShift: int, \
+              nYShift: int, \
+              nTeam: int, \
+              nUId: int, \
+              updateList: list) -> list:
+
+    # indexing
+    # rp  - gameMap[0:2]                  #resource points
+    # r   - gameMap[2:5]                  #resource
+    # u   - gameMap[5:13]                 #unit
+    # c   - ...it only consumes fuels     #city
+    # ct  - gameMap[8:12]                 #citytile
+    # ccd - gameMap[]                     #roads
+
+    rpStart = 0
+    rStart = 2
+    uStart = 5
+    ctStart = 8
+
+    gameMap: np.ndarray(np.float32) = np.zeros(20, 32, 32)
+    cityDict: dict = {}
+
+    for update in updateList:
+        cmdList: list[str] = update.split(' ')
+
+        sIdentifier: str = cmdList[0]
+        if INPUT_CONSTANTS.RESEARCH_POINTS == sIdentifier:
+            team = int(cmdList[1])
+            rp = int(cmdList[2])
+            idx = rpStart + (team - nTeam) % 2
+            value = min(rp, 200) / 200
+            gameMap[idx, :] = value
+
+        elif INPUT_CONSTANTS.RESOURCES == sIdentifier:
+            rtype = cmdList[1]
+            x = int(cmdList[2]) + nXShift
+            y = int(cmdList[3]) + nYShift
+            amt = int(float(cmdList[4]))
+            idx = rStart + {'wood':0, 'coal':1, 'uranium':2}[rtype]
+            value = amt / 800
+            gameMap[idx, x, y] = value
+
+        elif INPUT_CONSTANTS.UNITS == sIdentifier:
+            utype = int(cmdList[1])
+            team = int(cmdList[2])
+            uid = cmdList[3]
+            x = int(cmdList[4])
+            y = int(cmdList[5])
+            cooldown = float(cmdList[6]) / 6.0
+            wood = int(cmdList[7])
+            coal = int(cmdList[8])
+            uranium = int(cmdList[9])
+            resources = (wood + coal + uranium) / 100
+
+            if nUId == uid:
+                idx = uStart
+                value = (1, resources)
+                gameMap[idx:idx+2, x, y] = value
+            else:
+                idx = uStart + 2
+                value = (1, cooldown, resources)
+                gameMap[idx:idx+3, x, y] = value
+
+        elif INPUT_CONSTANTS.CITY == sIdentifier:
+            team = int(cmdList[1])
+            cid: str = cmdList[2]
+            fuel = float(cmdList[3])
+            lightupkeep = float(cmdList[4])
+            cityDict[cid] = min(fuel / lightupkeep, 10) / 10
+
+        elif INPUT_CONSTANTS.CITY_TILES == sIdentifier:
+            team = int(cmdList[1])
+            cid: str = cmdList[2]
+            x = int(cmdList[3]) + nXShift
+            y = int(cmdList[4]) + nYShift
+            cooldown = float(cmdList[5])
+            idx = ctStart + (team - nTeam) % 2 * 2
+            value = (1, cityDict[cid])
+            gameMap[idx:idx+2, x, y] = value
+
+        elif INPUT_CONSTANTS.ROADS == sIdentifier:
+            x = int(cmdList[1])
+            y = int(cmdList[2])
+            road = float(cmdList[3])
+
+        else:
+            print( ':: ERROR :: UPDATEMAP')
+
+    # Day/Night Cycle
+    gameMap[17, :] = nStep % 40 / 40
+    # Turns
+    gameMap[18, :] = nStep / 360
+    # Map Size
+    gameMap[19, nXShift:32-nXShift, nYShift:32-nYShift] = 1
+
+    return gameMap
+
 #
 # BATCH_SIZE = 128
 # GAMMA = 0.999
